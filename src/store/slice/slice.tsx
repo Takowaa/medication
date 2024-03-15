@@ -6,9 +6,7 @@ export interface Medication {
     name: string;
     description: string;
     performed: number;
-    target: number;
-
-
+    destination: number;
 }
 
 export interface MedicationState {

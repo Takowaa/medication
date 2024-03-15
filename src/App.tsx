@@ -7,17 +7,17 @@ import {
     medicationListUpdate
 } from "./store/slice/action.tsx";
 import {useSelector} from "react-redux";
-import {Button, Flex, Input, Modal, Table} from "antd";
-import TextArea from "antd/es/input/TextArea";
-import {useForm, SubmitHandler, Controller} from "react-hook-form"
+import {Button, Flex, Table} from "antd";
+import {useForm, SubmitHandler} from "react-hook-form"
 import {yupResolver} from "@hookform/resolvers/yup"
 import * as yup from "yup"
 import {DeleteOutlined} from "@ant-design/icons";
 import {Medication} from "./store/slice/slice.tsx";
+import {Popconfirm} from 'antd';
+import CreateModal from "./CreateModal";
 
 
-
-type Inputs = {
+export type MedicationFormData = {
     name: string
     description: string;
     performed: number
@@ -59,23 +59,29 @@ function App() {
             title: "Performed",
             dataIndex: "performed",
             key: "performed",
-            render: (value:number, row: Medication)=> {
+            render: (value: number, row: Medication) => {
+                const isButtonVisibile = value < row.destination
 
                 return (
                     <>
-                        {/*<button onClick={() => dispatch(medicationListUpdate({*/}
-                        {/*        id: row.id,*/}
-                        {/*        performed: row.performed - 1*/}
-                        {/*    })*/}
-                        {/*)}>-*/}
-                        {/*</button>*/}
+                        <button onClick={() => {
+                            if (value > 0) {
+                                dispatch(medicationListUpdate({
+                                        ...row,
+                                        performed: row.performed - 1
+                                    })
+                                )
+                            }
+                        }
+                        }>-
+                        </button>
                         <span>{value}</span>
-                        {/*<button onClick={() => dispatch(medicationListUpdate({*/}
-                        {/*        id: row.id,*/}
-                        {/*        performed: row.performed + 1*/}
-                        {/*    })*/}
-                        {/*)}>+*/}
-                        {/*</button>*/}
+                        {isButtonVisibile && (<button onClick={() => dispatch(medicationListUpdate({
+                                ...row,
+                                performed: row.performed + 1
+                            })
+                        )}>+
+                        </button>)}
                     </>
                 )
             }
@@ -91,9 +97,17 @@ function App() {
             title: "Actions",
             dataIndex: "Actions",
             key: "actions",
-            render: (_:undefined, row: Medication)=> {
-
-                return <button onClick={()=> dispatch(medicationListDelete(row.id))}><DeleteOutlined /></button>
+            render: (_: undefined, row: Medication) => {
+                return (
+                    <Popconfirm
+                        title="Are you sure you want to delete this medication?"
+                        onConfirm={() => dispatch(medicationListDelete(row.id))}
+                        okText="Yes"
+                        cancelText="No"
+                    >
+                        <button><DeleteOutlined/></button>
+                    </Popconfirm>
+                )
             }
         }
     ];
@@ -104,12 +118,10 @@ function App() {
         control,
         reset,
         formState: {errors},
-    } = useForm<Inputs>({
+    } = useForm<MedicationFormData>({
         resolver: yupResolver(schema),
     })
-    const onSubmit: SubmitHandler<Inputs> = (data) => {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
+    const onSubmit: SubmitHandler<MedicationFormData> = (data) => {
         dispatch(medicationListAdd(data))
         setIsModalOpen(false)
         reset()
@@ -122,6 +134,15 @@ function App() {
         setIsModalOpen(false);
     };
 
+   const sortedTable = [...medications].sort((a) => {
+        if (a.performed < a.destination) {
+            return - 1
+        }
+        return  1
+    })
+
+
+
     useEffect(() => {
         dispatch(medicationListAction())
     }, [dispatch])
@@ -132,41 +153,14 @@ function App() {
                 <h2>Medication List</h2>
                 <Button type="primary" onClick={showModal}>
                     + Add medication
-                </Button>
-                <Modal title="Basic Modal" open={isModalOpen} onOk={handleSubmit(onSubmit)} onCancel={handleCancel}>
-
-                    <label htmlFor="name">*Name</label>
-                    <Controller
-                        name="name"
-                        control={control}
-                        render={({field}) => <Input {...field} />}
-                    />
-                    {errors.name && <p>{errors.name.message}</p>}
-                    <label htmlFor="description">*Description</label>
-                    <Controller
-                        name="description"
-                        control={control}
-                        render={({field}) => <TextArea  rows={4} {...field}/>}
-                    />
-
-                    <label htmlFor="count">*Count</label>
-                    <Controller
-                        name="performed"
-                        control={control}
-                        render={({field}) => <Input {...field} />}
-                    />
-                    {errors.performed && <p>{errors.performed.message}</p>}
-                    <label htmlFor="destination">*Destination</label>
-                    <Controller
-                        name="destination"
-                        control={control}
-                        render={({field}) => <Input {...field} />}
-                    />
-                    {errors.destination && <p>{errors.destination.message}</p>}
-
-                </Modal>
+                 </Button>
+               <CreateModal isModalOpen={isModalOpen}
+                            handleCancel={handleCancel}
+                            handleSubmit={handleSubmit(onSubmit)}
+                            control={control}
+                            errors={errors} />
             </Flex>
-            <Table dataSource={medications} columns={columns}/>
+            <Table dataSource={sortedTable} columns={columns}/>
         </>
     )
 }
